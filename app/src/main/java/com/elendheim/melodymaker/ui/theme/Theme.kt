@@ -8,34 +8,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// Dark-first palette: near-black surfaces, warm amber primary, mint accents.
-private val Amber = Color(0xFFFFB059)
-private val AmberDim = Color(0xFF4A331A)
-private val Mint = Color(0xFF7DE1C3)
-private val MintDim = Color(0xFF1D3A32)
-private val Ink = Color(0xFF0E0F13)
-private val Surface1 = Color(0xFF16181F)
-private val Surface2 = Color(0xFF1E212B)
-private val TextMain = Color(0xFFECEDF1)
-private val TextSoft = Color(0xFFA9ADBA)
+// Dark-first palette built from the app logo: lavender, purple, deep violet.
+private val Lavender = Color(0xFFCEB7FF)
+private val Purple = Color(0xFF9570E4)
+private val PurpleMid = Color(0xFF7254B2)
+private val Violet = Color(0xFF3D2570)
+private val Ink = Color(0xFF121019)
+private val Surface1 = Color(0xFF191624)
+private val Surface2 = Color(0xFF231E33)
+private val TextMain = Color(0xFFECE9F4)
+private val TextSoft = Color(0xFFABA4C0)
 
 private val DarkColors = darkColorScheme(
-    primary = Amber,
-    onPrimary = Color(0xFF241503),
-    primaryContainer = AmberDim,
-    onPrimaryContainer = Color(0xFFFFDDB5),
-    secondary = Mint,
-    onSecondary = Color(0xFF03241B),
-    secondaryContainer = MintDim,
-    onSecondaryContainer = Color(0xFFC2F5E3),
-    tertiary = Color(0xFFB7A6FF),
+    primary = Lavender,
+    onPrimary = Color(0xFF2A1656),
+    primaryContainer = Violet,
+    onPrimaryContainer = Color(0xFFE9DEFF),
+    secondary = Purple,
+    onSecondary = Color(0xFF1E0F42),
+    secondaryContainer = Violet,
+    onSecondaryContainer = Color(0xFFE9DEFF),
+    tertiary = PurpleMid,
     background = Ink,
     onBackground = TextMain,
     surface = Surface1,
     onSurface = TextMain,
     surfaceVariant = Surface2,
     onSurfaceVariant = TextSoft,
-    outline = Color(0xFF3A3E4B),
+    outline = Color(0xFF453D5E),
     error = Color(0xFFFF8A80)
 )
 
