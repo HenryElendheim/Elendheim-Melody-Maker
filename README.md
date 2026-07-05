@@ -15,6 +15,8 @@ Most rolls sound like nothing. That is the point: rolling takes one second, and 
 - Every note shows its length: short, normal, or long
 - Tap any note chip to hear it and edit it to any pitch you want, by semitone or octave
 - Copy: puts the phrase on the clipboard as note names, for example "E4, G4, A4, E4, D4"
+- Save MIDI: exports the phrase as a standard .mid file at your chosen tempo, ready to drop into FL Studio or any other DAW
+- Settings with accessibility options: large text, high contrast, bigger buttons, vibration on tap, and flat note names (Eb instead of D#)
 - Built-in synth playback, no soundfonts or permissions needed
 - Dark mode only, by design
 

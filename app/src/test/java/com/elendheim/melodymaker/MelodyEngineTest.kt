@@ -30,6 +30,8 @@ class MelodyEngineTest {
         assertEquals("A4", Note.name(69))
         assertEquals("C5", Note.name(72))
         assertEquals("F#3", Note.name(54))
+        assertEquals("Eb4", Note.name(63, useFlats = true))
+        assertEquals("Gb3", Note.name(54, useFlats = true))
     }
 
     @Test

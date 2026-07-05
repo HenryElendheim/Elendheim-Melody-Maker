@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.elendheim.melodymaker.ui.MelodyScreen
 import com.elendheim.melodymaker.ui.theme.MelodyMakerTheme
 
@@ -16,8 +17,12 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
         setContent {
-            MelodyMakerTheme {
-                MelodyScreen()
+            val melodyViewModel: MelodyViewModel = viewModel()
+            MelodyMakerTheme(
+                largeText = melodyViewModel.largeText,
+                highContrast = melodyViewModel.highContrast
+            ) {
+                MelodyScreen(melodyViewModel)
             }
         }
     }

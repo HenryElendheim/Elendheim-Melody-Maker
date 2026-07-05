@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ElendheimMusicMaker"
+rootProject.name = "ElendheimMelodyMaker"
 include(":app")

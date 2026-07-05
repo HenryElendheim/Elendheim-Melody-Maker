@@ -1,6 +1,8 @@
 package com.elendheim.melodymaker.ui
 
-import androidx.compose.foundation.background
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -48,9 +51,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.elendheim.melodymaker.MelodyViewModel
@@ -61,9 +70,47 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MelodyScreen(viewModel: MelodyViewModel = viewModel()) {
+    if (viewModel.showSettings) {
+        BackHandler { viewModel.showSettings = false }
+        SettingsScreen(viewModel)
+    } else {
+        MainScreen(viewModel)
+    }
+}
+
+@Composable
+private fun MainScreen(viewModel: MelodyViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+
+    fun buzz() {
+        if (viewModel.hapticFeedback) {
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+
+    val saveMidi = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("audio/midi")
+    ) { uri ->
+        if (uri != null) {
+            val written = runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(viewModel.midiBytes())
+                } != null
+            }.getOrDefault(false)
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    if (written) "MIDI file saved. Drop it into FL Studio."
+                    else "Could not save the file."
+                )
+            }
+        }
+    }
+
+    val big = viewModel.bigButtons
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -77,26 +124,31 @@ fun MelodyScreen(viewModel: MelodyViewModel = viewModel()) {
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Header()
+            Header(onOpenSettings = { viewModel.showSettings = true })
 
             ResultCard(
                 viewModel = viewModel,
+                big = big,
                 onCopy = {
                     clipboard.setText(AnnotatedString(viewModel.melodyText()))
                     scope.launch { snackbarHostState.showSnackbar("Copied: ${viewModel.melodyText()}") }
-                }
+                },
+                onSaveMidi = { saveMidi.launch("elendheim-melody.mid") }
             )
 
             Button(
-                onClick = { viewModel.roll() },
+                onClick = {
+                    buzz()
+                    viewModel.roll()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .height(if (big) 80.dp else 64.dp)
             ) {
                 Text("Roll", style = MaterialTheme.typography.titleLarge)
             }
 
-            ConstraintsCard(viewModel)
+            ConstraintsCard(viewModel, big)
             ChordLockCard(viewModel)
 
             Spacer(Modifier.height(8.dp))
@@ -107,99 +159,45 @@ fun MelodyScreen(viewModel: MelodyViewModel = viewModel()) {
     if (editingIndex in viewModel.melody.indices) {
         NoteEditorDialog(
             initialMidi = viewModel.melody[editingIndex].midi,
+            nameOf = { viewModel.noteName(it) },
+            big = big,
             onPreview = { viewModel.previewNote(it) },
-            onConfirm = { viewModel.applyEdit(it) },
+            onConfirm = {
+                buzz()
+                viewModel.applyEdit(it)
+            },
             onDismiss = { viewModel.closeEdit() }
         )
     }
 }
 
 @Composable
-private fun NoteEditorDialog(
-    initialMidi: Int,
-    onPreview: (Int) -> Unit,
-    onConfirm: (Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var midi by remember(initialMidi) { mutableIntStateOf(initialMidi) }
-
-    fun change(delta: Int) {
-        val next = (midi + delta).coerceIn(Note.MIN_MIDI, Note.MAX_MIDI)
-        if (next != midi) {
-            midi = next
-            onPreview(next)
+private fun Header(onOpenSettings: () -> Unit) {
+    Row(verticalAlignment = Alignment.Top) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Elendheim Melody Maker",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Random phrases inside your constraints. Roll until one catches your ear.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Edit note") },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    Note.name(midi),
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    StepperButton("-", "Down one semitone") { change(-1) }
-                    Text(
-                        "Semitone",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    StepperButton("+", "Up one semitone") { change(1) }
-                }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    StepperButton("-", "Down one octave") { change(-12) }
-                    Text(
-                        "Octave",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    StepperButton("+", "Up one octave") { change(12) }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(midi) }) { Text("Set note") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
-}
-
-@Composable
-private fun Header() {
-    Column {
-        Text(
-            "Elendheim Music Maker",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            "Random phrases inside your constraints. Roll until one catches your ear.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        TextButton(onClick = onOpenSettings) { Text("Settings") }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ResultCard(viewModel: MelodyViewModel, onCopy: () -> Unit) {
+private fun ResultCard(
+    viewModel: MelodyViewModel,
+    big: Boolean,
+    onCopy: () -> Unit,
+    onSaveMidi: () -> Unit
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
@@ -222,17 +220,22 @@ private fun ResultCard(viewModel: MelodyViewModel, onCopy: () -> Unit) {
                 ) {
                     viewModel.melody.forEachIndexed { index, event ->
                         NoteChip(
-                            label = event.name,
+                            label = viewModel.noteName(event.midi),
                             lengthLabel = event.lengthLabel,
                             playing = viewModel.playingIndex == index,
+                            big = big,
                             onClick = { viewModel.startEdit(index) }
                         )
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     OutlinedButton(onClick = { viewModel.play() }) { Text("Play") }
                     OutlinedButton(onClick = { viewModel.mutate() }) { Text("Mutate") }
                     OutlinedButton(onClick = onCopy) { Text("Copy") }
+                    OutlinedButton(onClick = onSaveMidi) { Text("Save MIDI") }
                 }
             }
         }
@@ -244,6 +247,7 @@ private fun NoteChip(
     label: String,
     lengthLabel: String,
     playing: Boolean,
+    big: Boolean,
     onClick: () -> Unit
 ) {
     val bg = if (playing) MaterialTheme.colorScheme.primary
@@ -256,7 +260,10 @@ private fun NoteChip(
         modifier = Modifier.clickable(onClickLabel = "Edit note $label", onClick = onClick)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.padding(
+                horizontal = if (big) 18.dp else 14.dp,
+                vertical = if (big) 14.dp else 10.dp
+            ),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -276,7 +283,7 @@ private fun NoteChip(
 }
 
 @Composable
-private fun ConstraintsCard(viewModel: MelodyViewModel) {
+private fun ConstraintsCard(viewModel: MelodyViewModel, big: Boolean) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
@@ -290,13 +297,15 @@ private fun ConstraintsCard(viewModel: MelodyViewModel) {
 
             RangeStepper(
                 label = "Low note",
-                value = Note.name(viewModel.lowMidi),
+                value = viewModel.noteName(viewModel.lowMidi),
+                big = big,
                 onDown = { viewModel.nudgeLow(-1) },
                 onUp = { viewModel.nudgeLow(1) }
             )
             RangeStepper(
                 label = "High note",
-                value = Note.name(viewModel.highMidi),
+                value = viewModel.noteName(viewModel.highMidi),
+                big = big,
                 onDown = { viewModel.nudgeHigh(-1) },
                 onUp = { viewModel.nudgeHigh(1) }
             )
@@ -346,31 +355,43 @@ private fun ConstraintsCard(viewModel: MelodyViewModel) {
 }
 
 @Composable
-private fun RangeStepper(label: String, value: String, onDown: () -> Unit, onUp: () -> Unit) {
+private fun RangeStepper(
+    label: String,
+    value: String,
+    big: Boolean,
+    onDown: () -> Unit,
+    onUp: () -> Unit
+) {
+    val buttonSize = if (big) 56.dp else 44.dp
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        StepperButton("-", "Lower $label by one semitone", onDown)
+        StepperButton("-", "Lower $label by one semitone", buttonSize, onDown)
         Text(
             value,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.width(64.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
-        StepperButton("+", "Raise $label by one semitone", onUp)
+        StepperButton("+", "Raise $label by one semitone", buttonSize, onUp)
     }
 }
 
 @Composable
-private fun StepperButton(symbol: String, description: String, onClick: () -> Unit) {
+private fun StepperButton(
+    symbol: String,
+    description: String,
+    size: Dp = 44.dp,
+    onClick: () -> Unit
+) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = CircleShape,
         modifier = Modifier
-            .size(44.dp)
+            .size(size)
             .clickable(onClickLabel = description, onClick = onClick)
     ) {
         Column(
@@ -456,12 +477,13 @@ private fun ChordLockCard(viewModel: MelodyViewModel) {
             }
 
             if (viewModel.chordLock) {
+                val rootNames = if (viewModel.useFlats) Note.FLAT_NAMES else Note.NAMES
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     DropdownField(
                         label = "Root",
-                        value = Note.NAMES[viewModel.chordRoot],
-                        options = Note.NAMES.toList(),
-                        onSelected = { viewModel.chordRoot = Note.NAMES.indexOf(it) },
+                        value = rootNames[viewModel.chordRoot],
+                        options = rootNames.toList(),
+                        onSelected = { viewModel.chordRoot = rootNames.indexOf(it) },
                         modifier = Modifier.weight(1f)
                     )
                     DropdownField(
@@ -518,5 +540,180 @@ private fun DropdownField(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun NoteEditorDialog(
+    initialMidi: Int,
+    nameOf: (Int) -> String,
+    big: Boolean,
+    onPreview: (Int) -> Unit,
+    onConfirm: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var midi by remember(initialMidi) { mutableIntStateOf(initialMidi) }
+    val buttonSize = if (big) 56.dp else 44.dp
+
+    fun change(delta: Int) {
+        val next = (midi + delta).coerceIn(Note.MIN_MIDI, Note.MAX_MIDI)
+        if (next != midi) {
+            midi = next
+            onPreview(next)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit note") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    nameOf(midi),
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StepperButton("-", "Down one semitone", buttonSize) { change(-1) }
+                    Text(
+                        "Semitone",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    StepperButton("+", "Up one semitone", buttonSize) { change(1) }
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StepperButton("-", "Down one octave", buttonSize) { change(-12) }
+                    Text(
+                        "Octave",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    StepperButton("+", "Up one octave", buttonSize) { change(12) }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(midi) }) { Text("Set note") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun SettingsScreen(viewModel: MelodyViewModel) {
+    Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Settings",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = { viewModel.showSettings = false }) { Text("Done") }
+            }
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    Text("Accessibility", style = MaterialTheme.typography.titleMedium)
+                    SettingRow(
+                        title = "Large text",
+                        description = "Makes all text in the app bigger.",
+                        checked = viewModel.largeText,
+                        onChange = { viewModel.updateLargeText(it) }
+                    )
+                    SettingRow(
+                        title = "High contrast",
+                        description = "Black background and brighter text for easier reading.",
+                        checked = viewModel.highContrast,
+                        onChange = { viewModel.updateHighContrast(it) }
+                    )
+                    SettingRow(
+                        title = "Bigger buttons",
+                        description = "Larger touch targets for the Roll button, steppers, and note chips.",
+                        checked = viewModel.bigButtons,
+                        onChange = { viewModel.updateBigButtons(it) }
+                    )
+                    SettingRow(
+                        title = "Vibrate on tap",
+                        description = "A small buzz when you roll or set a note.",
+                        checked = viewModel.hapticFeedback,
+                        onChange = { viewModel.updateHapticFeedback(it) }
+                    )
+                }
+            }
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    Text("Notation", style = MaterialTheme.typography.titleMedium)
+                    SettingRow(
+                        title = "Flat note names",
+                        description = "Show Eb instead of D#.",
+                        checked = viewModel.useFlats,
+                        onChange = { viewModel.updateUseFlats(it) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(checked = checked, onCheckedChange = null)
     }
 }

@@ -3,9 +3,11 @@ package com.elendheim.melodymaker.ui.theme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 
 // Dark-first palette built from the app logo: lavender, purple, deep violet.
@@ -39,17 +41,61 @@ private val DarkColors = darkColorScheme(
     error = Color(0xFFFF8A80)
 )
 
+// Same purple identity, pushed further apart: black background, white text,
+// brighter secondary text and outlines.
+private val HighContrastColors = DarkColors.copy(
+    background = Color(0xFF000000),
+    surface = Color(0xFF14101E),
+    surfaceVariant = Color(0xFF272138),
+    onBackground = Color(0xFFFFFFFF),
+    onSurface = Color(0xFFFFFFFF),
+    onSurfaceVariant = Color(0xFFD9D4E8),
+    onPrimary = Color(0xFF1D0D45),
+    outline = Color(0xFF8F87AD)
+)
+
 private val AppShapes = Shapes(
     small = RoundedCornerShape(10.dp),
     medium = RoundedCornerShape(16.dp),
     large = RoundedCornerShape(24.dp)
 )
 
+private fun TextStyle.scaled(factor: Float) = copy(
+    fontSize = if (fontSize.isSpecified) fontSize * factor else fontSize,
+    lineHeight = if (lineHeight.isSpecified) lineHeight * factor else lineHeight
+)
+
+private fun Typography.scaled(factor: Float) = copy(
+    displayLarge = displayLarge.scaled(factor),
+    displayMedium = displayMedium.scaled(factor),
+    displaySmall = displaySmall.scaled(factor),
+    headlineLarge = headlineLarge.scaled(factor),
+    headlineMedium = headlineMedium.scaled(factor),
+    headlineSmall = headlineSmall.scaled(factor),
+    titleLarge = titleLarge.scaled(factor),
+    titleMedium = titleMedium.scaled(factor),
+    titleSmall = titleSmall.scaled(factor),
+    bodyLarge = bodyLarge.scaled(factor),
+    bodyMedium = bodyMedium.scaled(factor),
+    bodySmall = bodySmall.scaled(factor),
+    labelLarge = labelLarge.scaled(factor),
+    labelMedium = labelMedium.scaled(factor),
+    labelSmall = labelSmall.scaled(factor)
+)
+
+private val BaseTypography = Typography()
+private val LargeTypography = BaseTypography.scaled(1.2f)
+
 @Composable
-fun MelodyMakerTheme(content: @Composable () -> Unit) {
+fun MelodyMakerTheme(
+    largeText: Boolean = false,
+    highContrast: Boolean = false,
+    content: @Composable () -> Unit
+) {
     MaterialTheme(
-        colorScheme = DarkColors,
+        colorScheme = if (highContrast) HighContrastColors else DarkColors,
         shapes = AppShapes,
+        typography = if (largeText) LargeTypography else BaseTypography,
         content = content
     )
 }

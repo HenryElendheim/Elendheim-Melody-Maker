@@ -1,14 +1,17 @@
 package com.elendheim.melodymaker
 
+import android.app.Application
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.elendheim.melodymaker.music.ChordType
 import com.elendheim.melodymaker.music.MelodyEngine
+import com.elendheim.melodymaker.music.MidiWriter
 import com.elendheim.melodymaker.music.Note
 import com.elendheim.melodymaker.music.NoteEvent
 import com.elendheim.melodymaker.music.RhythmFeel
@@ -20,7 +23,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MelodyViewModel : ViewModel() {
+class MelodyViewModel(app: Application) : AndroidViewModel(app) {
+
+    private val prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     // Constraints
     var lowMidi by mutableIntStateOf(60) // C4
@@ -46,6 +51,44 @@ class MelodyViewModel : ViewModel() {
     /** Index of the note being edited in the note editor, or -1 when closed. */
     var editingIndex by mutableIntStateOf(-1)
         private set
+
+    // Settings (persisted)
+    var showSettings by mutableStateOf(false)
+    var largeText by mutableStateOf(prefs.getBoolean("large_text", false))
+        private set
+    var highContrast by mutableStateOf(prefs.getBoolean("high_contrast", false))
+        private set
+    var bigButtons by mutableStateOf(prefs.getBoolean("big_buttons", false))
+        private set
+    var hapticFeedback by mutableStateOf(prefs.getBoolean("haptic_feedback", true))
+        private set
+    var useFlats by mutableStateOf(prefs.getBoolean("use_flats", false))
+        private set
+
+    fun updateLargeText(value: Boolean) {
+        largeText = value
+        prefs.edit().putBoolean("large_text", value).apply()
+    }
+
+    fun updateHighContrast(value: Boolean) {
+        highContrast = value
+        prefs.edit().putBoolean("high_contrast", value).apply()
+    }
+
+    fun updateBigButtons(value: Boolean) {
+        bigButtons = value
+        prefs.edit().putBoolean("big_buttons", value).apply()
+    }
+
+    fun updateHapticFeedback(value: Boolean) {
+        hapticFeedback = value
+        prefs.edit().putBoolean("haptic_feedback", value).apply()
+    }
+
+    fun updateUseFlats(value: Boolean) {
+        useFlats = value
+        prefs.edit().putBoolean("use_flats", value).apply()
+    }
 
     private var playJob: Job? = null
 
@@ -127,7 +170,12 @@ class MelodyViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.Default) { TonePlayer.playSingle(midi) }
     }
 
-    fun melodyText(): String = melody.joinToString(", ") { it.name }
+    fun noteName(midi: Int): String = Note.name(midi, useFlats)
+
+    fun melodyText(): String = melody.joinToString(", ") { noteName(it.midi) }
+
+    /** The current melody as a Standard MIDI File, ready to save. */
+    fun midiBytes(): ByteArray = MidiWriter.write(melody, bpm)
 
     override fun onCleared() {
         TonePlayer.stop()
