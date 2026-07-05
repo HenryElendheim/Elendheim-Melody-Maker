@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Eighth note in amber, centered in the adaptive icon safe zone -->
+    <path
+        android:fillColor="#FFB059"
+        android:pathData="M58,32 h5 v34 a10.5,8 0 1 1 -5,-7 Z" />
+    <path
+        android:fillColor="#FFB059"
+        android:pathData="M63,32 q13,5 10,19 q-2,-8 -10,-12 Z" />
+</vector>
