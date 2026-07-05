@@ -1,4 +1,4 @@
-# Elendheim Music Maker
+# Elendheim Melody Maker
 
 An Android app for breaking out of your own melodic habits. Set a few constraints, hit Roll, and the app generates a short random phrase, plays it back, and shows the note names so you can punch the good ones straight into FL Studio's piano roll.
 
