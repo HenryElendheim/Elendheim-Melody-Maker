@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 
 // Dark-first palette built from the app logo: lavender, purple, deep violet.
 private val Lavender = Color(0xFFCEB7FF)
