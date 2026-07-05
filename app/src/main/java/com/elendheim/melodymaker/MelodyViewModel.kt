@@ -43,6 +43,10 @@ class MelodyViewModel : ViewModel() {
     var playingIndex by mutableIntStateOf(-1)
         private set
 
+    /** Index of the note being edited in the note editor, or -1 when closed. */
+    var editingIndex by mutableIntStateOf(-1)
+        private set
+
     private var playJob: Job? = null
 
     private fun settings() = RollSettings(
@@ -93,6 +97,28 @@ class MelodyViewModel : ViewModel() {
                 playingIndex = -1
             }
         }
+    }
+
+    fun startEdit(index: Int) {
+        if (index in melody.indices) {
+            editingIndex = index
+            previewNote(melody[index].midi)
+        }
+    }
+
+    fun closeEdit() {
+        editingIndex = -1
+    }
+
+    /** Replaces the pitch of the note being edited, keeps its length, and replays. */
+    fun applyEdit(midi: Int) {
+        val index = editingIndex
+        editingIndex = -1
+        if (index !in melody.indices) return
+        melody = melody.toMutableList().also {
+            it[index] = it[index].copy(midi = midi.coerceIn(Note.MIN_MIDI, Note.MAX_MIDI))
+        }
+        play()
     }
 
     fun previewNote(midi: Int) {

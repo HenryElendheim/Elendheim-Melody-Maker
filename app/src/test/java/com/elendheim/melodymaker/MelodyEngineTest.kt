@@ -3,6 +3,7 @@ package com.elendheim.melodymaker
 import com.elendheim.melodymaker.music.ChordType
 import com.elendheim.melodymaker.music.MelodyEngine
 import com.elendheim.melodymaker.music.Note
+import com.elendheim.melodymaker.music.NoteEvent
 import com.elendheim.melodymaker.music.RhythmFeel
 import com.elendheim.melodymaker.music.RollSettings
 import org.junit.Assert.assertEquals
@@ -29,6 +30,13 @@ class MelodyEngineTest {
         assertEquals("A4", Note.name(69))
         assertEquals("C5", Note.name(72))
         assertEquals("F#3", Note.name(54))
+    }
+
+    @Test
+    fun lengthLabelsMatchBeats() {
+        assertEquals("short", NoteEvent(60, 0.25).lengthLabel)
+        assertEquals("normal", NoteEvent(60, 0.5).lengthLabel)
+        assertEquals("long", NoteEvent(60, 1.0).lengthLabel)
     }
 
     @Test

@@ -1,4 +1,4 @@
-# Elendheim Melody Maker
+# Elendheim Music Maker
 
 An Android app for breaking out of your own melodic habits. Set a few constraints, hit Roll, and the app generates a short random phrase, plays it back, and shows the note names so you can punch the good ones straight into FL Studio's piano roll.
 
@@ -12,7 +12,8 @@ Most rolls sound like nothing. That is the point: rolling takes one second, and 
 - Smoothness dial: weight the roll toward stepwise motion so phrases sound melodic instead of random bleeps
 - Chord lock: restrict the roll to the tones of a chord you are working over (root plus major, minor, major 7, minor 7, dominant 7, or sus4)
 - Mutate: keep the roll you liked but change exactly one note. Roll, select, mutate: melodies you breed rather than roll
-- Tap any note chip to hear it alone
+- Every note shows its length: short, normal, or long
+- Tap any note chip to hear it and edit it to any pitch you want, by semitone or octave
 - Copy: puts the phrase on the clipboard as note names, for example "E4, G4, A4, E4, D4"
 - Built-in synth playback, no soundfonts or permissions needed
 - Dark mode only, by design

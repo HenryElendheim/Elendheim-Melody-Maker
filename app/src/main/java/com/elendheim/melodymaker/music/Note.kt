@@ -17,4 +17,12 @@ object Note {
 /** One note of a melody: a pitch plus a length in beats. */
 data class NoteEvent(val midi: Int, val beats: Double) {
     val name: String get() = Note.name(midi)
+
+    /** Human label for the note length: an eighth is "normal". */
+    val lengthLabel: String
+        get() = when {
+            beats < 0.5 -> "short"
+            beats > 0.5 -> "long"
+            else -> "normal"
+        }
 }
